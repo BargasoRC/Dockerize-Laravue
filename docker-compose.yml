@@ -1,0 +1,42 @@
+services:
+  app:
+    build:
+      context: ${SOURCE_LOCATION}
+      dockerfile: Dockerfile # Path to your custom Dockerfile for PHP-FPM
+    container_name: ${WEB_CONTAINER}
+    ports:
+      - "80:80"
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ${SOURCE_LOCATION}:/var/www/html
+      - vendor_cache:/var/www/html/vendor # Named volume for vendor
+      - node_modules_cache:/var/www/html/node_modules # Named volume for vendor
+    depends_on:
+      - db
+    networks:
+      - pens_network
+
+
+  db:
+    image: mysql:8.0
+    container_name: ${DB_CONTAINER}
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_ALLOW_EMPTY_PASSWORD: 1
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - pens_network
+
+volumes:
+  db_data:
+  vendor_cache:
+  node_modules_cache:
+
+networks:
+  pens_network:
+    driver: bridge
