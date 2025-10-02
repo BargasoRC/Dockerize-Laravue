@@ -1,8 +1,8 @@
 services:
   app:
     build:
-      context: ${SOURCE_LOCATION}
-      dockerfile: Dockerfile # Path to your custom Dockerfile for PHP-FPM
+      context: ${SOURCE_LOCATION}/.
+      dockerfile: ../Dockerize-Laravue/Dockerfile
     container_name: ${WEB_CONTAINER}
     ports:
       - "80:80"
@@ -12,6 +12,13 @@ services:
       - ${SOURCE_LOCATION}:/var/www/html
       - vendor_cache:/var/www/html/vendor # Named volume for vendor
       - node_modules_cache:/var/www/html/node_modules # Named volume for vendor
+    environment:
+      DB_CONTAINER: "mysql"
+      DB_HOST: "db"
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_NAME}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ""
     depends_on:
       - db
     networks:
