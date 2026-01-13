@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y \
 
 RUN docker-php-ext-configure intl # Configure intl extension
 RUN docker-php-ext-install pdo_mysql mysqli gd zip intl opcache # Install PHP extensions
-RUN a2enmod rewrite headers ssl # Enable Apache rewrite, headers, and SSL modules
+RUN a2enmod rewrite headers # Enable Apache rewrite and headers modules
 
 # Configure Apache MaxRequestWorkers (prefork MPM is already enabled by default)
 RUN echo "<IfModule mpm_prefork_module>" > /etc/apache2/conf-available/mpm_prefork.conf && \
@@ -43,41 +43,15 @@ RUN echo "max_execution_time = 300" > /usr/local/etc/php/conf.d/custom.ini && \
     echo "xdebug.client_port = 9003" >> /usr/local/etc/php/conf.d/custom.ini && \
     echo "xdebug.start_with_request = yes" >> /usr/local/etc/php/conf.d/custom.ini
 
-# Generate self-signed SSL certificate for development
-RUN mkdir -p /etc/apache2/ssl && \
-    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-    -keyout /etc/apache2/ssl/admin.pens.com.key \
-    -out /etc/apache2/ssl/admin.pens.com.crt \
-    -subj "/C=US/ST=State/L=City/O=Organization/CN=admin.pens.com"
-
-# Configure Apache virtual host for Laravel with HTTPS
+# Configure Apache virtual host for Laravel with multi-client support
 RUN echo "<VirtualHost *:80>" > /etc/apache2/sites-available/000-default.conf && \
-    echo "    ServerName admin.pens.com" >> /etc/apache2/sites-available/000-default.conf && \
-    echo "    ServerAlias *.admin.pens.com" >> /etc/apache2/sites-available/000-default.conf && \
-    echo "    ServerAlias ns-pens.dev.admin.pens.com" >> /etc/apache2/sites-available/000-default.conf && \
-    echo "    # Redirect all HTTP traffic to HTTPS" >> /etc/apache2/sites-available/000-default.conf && \
-    echo "    RewriteEngine On" >> /etc/apache2/sites-available/000-default.conf && \
-    echo "    RewriteCond %{HTTPS} off" >> /etc/apache2/sites-available/000-default.conf && \
-    echo "    RewriteRule ^(.*)$ https://%{HTTP_HOST}$1 [R=301,L]" >> /etc/apache2/sites-available/000-default.conf && \
-    echo "</VirtualHost>" >> /etc/apache2/sites-available/000-default.conf && \
-    echo "" >> /etc/apache2/sites-available/000-default.conf && \
-    echo "<VirtualHost *:443>" >> /etc/apache2/sites-available/000-default.conf && \
     echo "    DocumentRoot /var/www/html/public" >> /etc/apache2/sites-available/000-default.conf && \
     echo "    ServerName admin.pens.com" >> /etc/apache2/sites-available/000-default.conf && \
-    echo "    ServerAlias *.admin.pens.com" >> /etc/apache2/sites-available/000-default.conf && \
-    echo "    ServerAlias ns-pens.dev.admin.pens.com" >> /etc/apache2/sites-available/000-default.conf && \
-    echo "" >> /etc/apache2/sites-available/000-default.conf && \
-    echo "    # SSL Configuration" >> /etc/apache2/sites-available/000-default.conf && \
-    echo "    SSLEngine on" >> /etc/apache2/sites-available/000-default.conf && \
-    echo "    SSLCertificateFile /etc/apache2/ssl/admin.pens.com.crt" >> /etc/apache2/sites-available/000-default.conf && \
-    echo "    SSLCertificateKeyFile /etc/apache2/ssl/admin.pens.com.key" >> /etc/apache2/sites-available/000-default.conf && \
-    echo "" >> /etc/apache2/sites-available/000-default.conf && \
     echo "    <Directory /var/www/html/public>" >> /etc/apache2/sites-available/000-default.conf && \
     echo "        AllowOverride All" >> /etc/apache2/sites-available/000-default.conf && \
     echo "        Require all granted" >> /etc/apache2/sites-available/000-default.conf && \
     echo "        Options -Indexes +FollowSymLinks" >> /etc/apache2/sites-available/000-default.conf && \
     echo "    </Directory>" >> /etc/apache2/sites-available/000-default.conf && \
-    echo "" >> /etc/apache2/sites-available/000-default.conf && \
     echo "    ErrorLog /var/log/apache2/error.log" >> /etc/apache2/sites-available/000-default.conf && \
     echo "    CustomLog /var/log/apache2/access.log combined" >> /etc/apache2/sites-available/000-default.conf && \
     echo "</VirtualHost>" >> /etc/apache2/sites-available/000-default.conf
@@ -88,13 +62,28 @@ COPY composer.json composer.lock ./
 
 COPY . .
 
-RUN composer install
-
 RUN chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
-EXPOSE 80 443
+# # Create entrypoint script to add client hostnames to /etc/hosts
+# RUN echo '#!/bin/bash' > /entrypoint.sh && \
+#     echo 'set -e' >> /entrypoint.sh && \
+#     echo '' >> /entrypoint.sh && \
+#     echo '# Get the IP address of the app container from Docker DNS' >> /entrypoint.sh && \
+#     echo 'CLIENT_IP=$(getent hosts pens_client | awk '"'"'{ print $1 }'"'"')' >> /entrypoint.sh && \
+#     echo 'if [ ! -z "$CLIENT_IP" ]; then' >> /entrypoint.sh && \
+#     echo '    echo "Adding client hostnames to /etc/hosts: $CLIENT_IP"' >> /entrypoint.sh && \
+#     echo '    echo "$CLIENT_IP ns-pens.dev.pensclient.localhost" >> /etc/hosts' >> /entrypoint.sh && \
+#     echo '    echo "$CLIENT_IP pensclient.localhost" >> /etc/hosts' >> /entrypoint.sh && \
+#     echo 'fi' >> /entrypoint.sh && \
+#     echo '' >> /entrypoint.sh && \
+#     echo '# Execute the original command' >> /entrypoint.sh && \
+#     echo 'exec "$@"' >> /entrypoint.sh && \
+#     chmod +x /entrypoint.sh
 
+EXPOSE 80
+
+# ENTRYPOINT ["/entrypoint.sh"]
 # Start Apache
 CMD ["apache2-foreground"]
 

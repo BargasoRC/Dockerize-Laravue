@@ -73,8 +73,24 @@ RUN php artisan view:cache
 RUN chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
+# # Create entrypoint script to add admin hostname to /etc/hosts
+# RUN echo '#!/bin/bash' > /entrypoint.sh && \
+#     echo 'set -e' >> /entrypoint.sh && \
+#     echo '' >> /entrypoint.sh && \
+#     echo '# Get the IP address of the admin container from Docker DNS' >> /entrypoint.sh && \
+#     echo 'ADMIN_IP=$(getent hosts pens_admin_web | awk '"'"'{ print $1 }'"'"')' >> /entrypoint.sh && \
+#     echo 'if [ ! -z "$ADMIN_IP" ]; then' >> /entrypoint.sh && \
+#     echo '    echo "Adding admin hostname to /etc/hosts: $ADMIN_IP"' >> /entrypoint.sh && \
+#     echo '    echo "$ADMIN_IP admin.pens.com" >> /etc/hosts' >> /entrypoint.sh && \
+#     echo 'fi' >> /entrypoint.sh && \
+#     echo '' >> /entrypoint.sh && \
+#     echo '# Execute the original command' >> /entrypoint.sh && \
+#     echo 'exec "$@"' >> /entrypoint.sh && \
+#     chmod +x /entrypoint.sh
+
 EXPOSE 80
 
+# ENTRYPOINT ["/entrypoint.sh"]
 # Start Apache
 CMD ["apache2-foreground"]
 

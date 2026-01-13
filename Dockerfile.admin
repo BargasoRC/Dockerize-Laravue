@@ -43,11 +43,11 @@ RUN echo "max_execution_time = 300" > /usr/local/etc/php/conf.d/custom.ini && \
     echo "xdebug.client_port = 9003" >> /usr/local/etc/php/conf.d/custom.ini && \
     echo "xdebug.start_with_request = yes" >> /usr/local/etc/php/conf.d/custom.ini
 
-# Configure Apache to listen on port 81
-RUN echo "Listen 81" >> /etc/apache2/ports.conf
+# # Configure Apache to listen on port 80
+# RUN echo "Listen 80" >> /etc/apache2/ports.conf
 
 # Configure Apache virtual host for Legacy PHP Admin
-RUN echo "<VirtualHost *:81>" > /etc/apache2/sites-available/000-default.conf && \
+RUN echo "<VirtualHost *:80>" > /etc/apache2/sites-available/000-default.conf && \
     echo "    DocumentRoot /var/www/html/site" >> /etc/apache2/sites-available/000-default.conf && \
     echo "    ServerName admin.pens.com" >> /etc/apache2/sites-available/000-default.conf && \
     echo "    <Directory /var/www/html/site>" >> /etc/apache2/sites-available/000-default.conf && \
@@ -74,7 +74,7 @@ RUN if [ -f "/var/www/html/site/composer.json" ]; then \
         cd /var/www/html/site && composer install --no-dev --optimize-autoloader; \
     fi
 
-EXPOSE 81
+EXPOSE 80
 
 # Start Apache
 CMD ["apache2-foreground"]
